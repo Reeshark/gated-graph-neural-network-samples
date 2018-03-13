@@ -2,7 +2,8 @@
 from torch.autograd import Variable
 import torch
 import numpy as np
-import queue
+#import queue
+from multiprocessing import Queue
 import threading
 
 SMALL_NUMBER = 1e-7
@@ -34,7 +35,7 @@ class ThreadedIterator:
     The iterator should *not* return None"""
 
     def __init__(self, original_iterator, max_queue_size=2):
-        self.__queue = queue.Queue(maxsize=max_queue_size)
+        self.__queue = Queue(maxsize=max_queue_size)
         self.__thread = threading.Thread(target=lambda: self.worker(original_iterator))
         self.__thread.start()
 

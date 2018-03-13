@@ -62,7 +62,8 @@ class Propagator(nn.Module):
         z = z.view(-1, self.n_nodes, self.state_dim)
         joined_input = torch.cat((a_in, a_out, r * state_cur), 2)
         h_hat = self.transform(joined_input.view(-1, self.state_dim*3))
-        output = (1 - z) * state_cur + z * h_hat
+	h_hat = h_hat.view(-1, self.n_nodes, self.state_dim)
+	output = (1 - z) * state_cur + z * h_hat
 
         return output
 

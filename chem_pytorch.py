@@ -47,7 +47,7 @@ class ChemModel(object):
             'task_ids': [0],
 
             'random_seed': 0,
-            'use_cuda': False
+            'use_cuda': True
         }
         if config_file is not None:
             with open(config_file, 'r') as f:
@@ -165,6 +165,7 @@ class ChemModel(object):
         n_processed_data= 0
         batch_iterator = ThreadedIterator(loader, max_queue_size=2*self.params['batch_size'])
         for step, batch_data in enumerate(batch_iterator):
+            print("step {}".format(step))
             adj_matrix, annotation, padded_annotation, target = batch_data
             #padding = np.zeros((annotation.shape[0], self.max_num_vertices, self.params['hidden_size'] - self.annotation_size))#.double()
             #init_input = np.concatenate((annotation, padding), axis=2) # batch_size x n_nodes x hidden_size
