@@ -100,5 +100,7 @@ ENV/
 # mypy
 .mypy_cache/
 
+*.pickle
+*.json
 molecules_*.json
 data/*
