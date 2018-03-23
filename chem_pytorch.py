@@ -28,7 +28,7 @@ class ChemModel(object):
 
         self.run_id = "_".join([time.strftime("%Y-%m-%d-%H-%M-%S"), str(os.getpid())])
         log_dir = '.'
-        self.log_file = os.path.join(log_dir, "%s_log.json" % self.run_id)
+        self.log_file = os.path.join(log_dir, "%s_log.csv" % self.run_id)
         self.best_model_file = os.path.join(log_dir, "%s_model_best.pickle" % self.run_id)
 
         # Collect parameters:
@@ -152,7 +152,7 @@ class ChemModel(object):
     def make_minibatch_iterator(self, data, is_training):
         raise Exception("Models have to implement make_minibatch_iterator!")
 
-    def run_epoch(self, loader, criterion, optimizer, is_training):
+    def run_epoch(self, data, criterion, optimizer, epoch, is_training):
         chemical_accuracies = np.array([0.066513725, 0.012235489, 0.071939046, 0.033730778, 0.033486113, 0.004278493,
                                         0.001330901, 0.004165489, 0.004128926, 0.00409976, 0.004527465, 0.012292586,
                                         0.037467458])
@@ -163,9 +163,10 @@ class ChemModel(object):
         total_loss = 0
         #accuracies = []
         n_processed_data= 0
+        loader = self.make_minibatch_iterator(data, is_training)
         batch_iterator = ThreadedIterator(loader, max_queue_size=2*self.params['batch_size'])
         for step, batch_data in enumerate(batch_iterator):
-            print("step {}".format(step))
+            print("epoch{} step {}".format(epoch, step))
             adj_matrix, annotation, padded_annotation, target = batch_data
             #padding = np.zeros((annotation.shape[0], self.max_num_vertices, self.params['hidden_size'] - self.annotation_size))#.double()
             #init_input = np.concatenate((annotation, padding), axis=2) # batch_size x n_nodes x hidden_size
@@ -188,7 +189,7 @@ class ChemModel(object):
             self.model.zero_grad()
             output = self.model(init_input, annotation, adj_matrix)
             loss = criterion(output, target) #* num_graphs
-            total_loss += loss.cpu().data.numpy()
+            total_loss += np.asscalar(loss.cpu().data.numpy())
             #acc = (output.cpu().data.numpy() == target.cpu().data.numpy()).sum() ################ CHECK
             #accuracies.append(acc) 
 
@@ -202,7 +203,7 @@ class ChemModel(object):
 
         #accuracies = np.sum(accuracies, axis=0)/ n_processed_data
         #loss = loss / processed_graphs
-        return np.asscalar(total_loss[0])#, accuracies
+        return total_loss#, accuracies
 
 
     def train(self):
@@ -212,18 +213,21 @@ class ChemModel(object):
         criterion = torch.nn.MSELoss()
         optimizer = torch.optim.Adam(self.model.parameters(), lr=self.params['learning_rate'])
         
-        train_loader = self.make_minibatch_iterator(train_data, True)
-        val_loader = self.make_minibatch_iterator(val_data, False)
+        #train_loader = self.make_minibatch_iterator(train_data, True)
+        #val_loader = self.make_minibatch_iterator(val_data, False)
         if self.params['use_cuda']:
             self.model.cuda()
         #es = EarlyStopping('loss', min_delta=0, patience=self.params['patience'])
-        log_to_save = []
+        #log_to_save = []
         best_val_loss, best_val_loss_epoch = float("inf"), 0
+        with open(self.log_file, 'w') as f:
+            w = csv.DictWriter(f, ['epoch', 'train_results', 'valid_results'])
+            w.writeheader()
         for epoch in range(self.params['num_epochs']):
             print("epoch {}".format(epoch))         
-            train_loss = self.run_epoch(train_loader, criterion, optimizer, True)
+            train_loss = self.run_epoch(train_data, criterion, optimizer, epoch, True)
             print("Epoch {} Train loss {}".format(epoch, train_loss))
-            val_loss = self.run_epoch(val_loader, criterion, optimizer, False)
+            val_loss = self.run_epoch(val_data, criterion, optimizer, epoch, False)
             print("Epoch {} Val loss {}".format(epoch, val_loss))
 
             log_entry = {
@@ -231,10 +235,12 @@ class ChemModel(object):
                         'train_results': (train_loss),
                         'valid_results': (val_loss),
                         }
-            log_to_save.append(log_entry)
-            with open(self.log_file, 'w') as f:
-                for i in range(len(log_to_save)):
-                    json.dump(log_to_save[i], f, indent=4)
+            #log_to_save.append(log_entry)
+            with open(self.log_file, 'a') as f:
+                w = csv.DictWriter(f, log_entry.keys())
+                w.writerow(log_entry)
+                #for i in range(len(log_to_save)):
+                #    json.dump(log_to_save[i], f, indent=4)
 
             if val_loss < best_val_loss:
                 self.save_model(self.best_model_file)
