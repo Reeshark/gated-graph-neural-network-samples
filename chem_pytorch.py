@@ -35,7 +35,7 @@ class ChemModel(object):
         self.params = {
             'num_epochs': 3000,
             'patience': 25,
-            'learning_rate': 0.0001,
+            'learning_rate': 0.001,
             'clamp_gradient_norm': 1.0,
             'out_layer_dropout_keep_prob': 1.0,
 
@@ -207,22 +207,27 @@ class ChemModel(object):
 
 
     def train(self):
-        val_data = self.load_data('molecules_valid.json', False)
-        train_data = self.load_data('molecules_train.json', True)
+        val_data = self.load_data('molecules_valid.json', False) 
+        train_data = self.load_data('molecules_train.json', True) 
+        train_target, val_target = 0, 0
+        for data in train_data:
+            train_target += abs(data['label'][0])
+        for data in val_data:
+            val_target += abs(data['label'][0])
+        self.train_total_label = train_target #94002.3910159797
+        self.val_total_label = val_target #10128.00190945782
+
         self.model = self.make_model()
         criterion = torch.nn.MSELoss()
         optimizer = torch.optim.Adam(self.model.parameters(), lr=self.params['learning_rate'])
         
-        #train_loader = self.make_minibatch_iterator(train_data, True)
-        #val_loader = self.make_minibatch_iterator(val_data, False)
         if self.params['use_cuda']:
             self.model.cuda()
-        #es = EarlyStopping('loss', min_delta=0, patience=self.params['patience'])
-        #log_to_save = []
         best_val_loss, best_val_loss_epoch = float("inf"), 0
-        with open(self.log_file, 'w') as f:
-            w = csv.DictWriter(f, ['epoch', 'train_results', 'valid_results'])
-            w.writeheader()
+        #log_to_save = []
+        #with open(self.log_file, 'w') as f:
+        #    w = csv.DictWriter(f, ['epoch', 'train_loss', 'valid_loss'])
+        #    w.writeheader()
         for epoch in range(self.params['num_epochs']):
             print("epoch {}".format(epoch))         
             train_loss = self.run_epoch(train_data, criterion, optimizer, epoch, True)
@@ -232,8 +237,10 @@ class ChemModel(object):
 
             log_entry = {
                         'epoch': epoch,
-                        'train_results': (train_loss),
-                        'valid_results': (val_loss),
+                        'train_loss': (train_loss),
+                        'train_error_ratio': (train_loss*100.0/self.train_total_label)
+                        'valid_loss': (val_loss),
+                        'val_error_ratio': (val_loss*100.0/self.val_total_label)
                         }
             #log_to_save.append(log_entry)
             with open(self.log_file, 'a') as f:
