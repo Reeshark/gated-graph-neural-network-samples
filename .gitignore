@@ -102,5 +102,6 @@ ENV/
 
 *.pickle
 *.json
+*.csv
 molecules_*.json
 data/*
