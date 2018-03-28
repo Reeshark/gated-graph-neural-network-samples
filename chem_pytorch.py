@@ -1,5 +1,5 @@
 #!/usr/bin/env/python
-
+import csv
 import torch
 import time
 import os
@@ -158,13 +158,14 @@ class ChemModel(object):
                                         0.037467458])
         if is_training:
             self.model.train()
+            np.random.shuffle(data)
         else:
             self.model.eval()
         total_loss = 0
         #accuracies = []
         n_processed_data= 0
         loader = self.make_minibatch_iterator(data, is_training)
-        batch_iterator = ThreadedIterator(loader, max_queue_size=2*self.params['batch_size'])
+        batch_iterator = ThreadedIterator(loader, max_queue_size=4*self.params['batch_size'])
         for step, batch_data in enumerate(batch_iterator):
             print("epoch{} step {}".format(epoch, step))
             adj_matrix, annotation, padded_annotation, target = batch_data
@@ -238,7 +239,7 @@ class ChemModel(object):
             log_entry = {
                         'epoch': epoch,
                         'train_loss': (train_loss),
-                        'train_error_ratio': (train_loss*100.0/self.train_total_label)
+                        'train_error_ratio': (train_loss*100.0/self.train_total_label),
                         'valid_loss': (val_loss),
                         'val_error_ratio': (val_loss*100.0/self.val_total_label)
                         }

@@ -114,7 +114,6 @@ class SparseGGNNChemModel(ChemModel):
             processed_graphs.append({"edge_list": d['graph'],
                                      "annotation": d["node_features"],
                                      "label": [d["targets"][task_id][0] for task_id in self.params['task_ids']]})
-        np.random.shuffle(processed_graphs)
 
         # if is_training_data:
         #     np.random.shuffle(processed_graphs)
@@ -155,11 +154,6 @@ class SparseGGNNChemModel(ChemModel):
                     num_incoming_edges_dicts_per_type[bwd_edge_type][y] += 1
 
         return final_adj_lists, num_incoming_edges_dicts_per_type
-
-    #def make_minibatch_iterator(self, data, is_training):
-    #    if is_training:
-    #        np.random.shuffle(data)
-    #    self.dataloader = get_chem_dataloader(data, batch_size=self.params['batch_size'])
 
 
     def make_minibatch_iterator(self, data, is_training):
